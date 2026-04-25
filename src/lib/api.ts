@@ -12,20 +12,9 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return data as T;
 }
 
-export async function apiRequest<T>(
-  path: string,
-  accessToken: string,
-  init?: RequestInit,
-): Promise<T> {
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
-    const response = await fetch(`${apiBaseUrl}${path}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-        ...init?.headers,
-      },
-    });
+    const response = await fetch(`${apiBaseUrl}${path}`, init);
 
     return parseResponse<T>(response);
   } catch (error) {
@@ -37,4 +26,32 @@ export async function apiRequest<T>(
 
     throw error;
   }
+}
+
+export async function apiRequest<T>(
+  path: string,
+  accessToken: string,
+  init?: RequestInit,
+): Promise<T> {
+  return request<T>(path, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      ...init?.headers,
+    },
+  });
+}
+
+export async function publicApiRequest<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  return request<T>(path, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...init?.headers,
+    },
+  });
 }

@@ -7,10 +7,15 @@ interface Category {
 
 interface CategoryListProps {
   categories: Category[];
+  searchQuery?: string;
   onDelete: (id: string) => void;
 }
 
-export function CategoryList({ categories, onDelete }: CategoryListProps) {
+export function CategoryList({
+  categories,
+  searchQuery = '',
+  onDelete,
+}: CategoryListProps) {
   if (categories.length === 0) {
     return (
       <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/80 py-12 text-center">
@@ -31,7 +36,9 @@ export function CategoryList({ categories, onDelete }: CategoryListProps) {
           Nenhuma categoria
         </h3>
         <p className="mt-1 text-sm text-gray-500">
-          Comece criando uma nova categoria.
+          {searchQuery.trim().length > 0
+            ? 'Tente buscar por outro nome de categoria.'
+            : 'Comece criando uma nova categoria.'}
         </p>
       </div>
     );

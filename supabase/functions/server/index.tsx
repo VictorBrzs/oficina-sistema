@@ -259,6 +259,23 @@ app.delete("/make-server-8db4781d/categories/:id", requireAuth, async (c) => {
   try {
     const userId = c.get('userId');
     const categoryId = c.req.param('id');
+    const existingCategory = await kv.get(`user:${userId}:category:${categoryId}`);
+
+    if (!existingCategory) {
+      return c.json({ error: 'Category not found' }, 404);
+    }
+
+    const products = await kv.getByPrefix(`user:${userId}:product:`);
+    const hasLinkedProducts = (products || []).some(
+      (product: any) => product?.category === categoryId,
+    );
+
+    if (hasLinkedProducts) {
+      return c.json(
+        { error: 'Category is still linked to stock items or services' },
+        400,
+      );
+    }
 
     await kv.del(`user:${userId}:category:${categoryId}`);
     return c.json({ success: true });

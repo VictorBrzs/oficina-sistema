@@ -15,6 +15,7 @@ interface ProductListProps {
   products: Product[];
   categories: any[];
   viewKind: ItemKind;
+  searchQuery?: string;
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
 }
@@ -23,6 +24,7 @@ export function ProductList({
   products,
   categories,
   viewKind,
+  searchQuery = '',
   onEdit,
   onDelete,
 }: ProductListProps) {
@@ -37,13 +39,19 @@ export function ProductList({
   };
 
   const emptyTitle =
-    viewKind === 'service'
-      ? 'Nenhum servico cadastrado'
-      : 'Nenhum item de estoque cadastrado';
+    searchQuery.trim().length > 0
+      ? viewKind === 'service'
+        ? 'Nenhum servico encontrado'
+        : 'Nenhum item encontrado'
+      : viewKind === 'service'
+        ? 'Nenhum servico cadastrado'
+        : 'Nenhum item de estoque cadastrado';
   const emptyText =
-    viewKind === 'service'
-      ? 'Comece adicionando servicos da sua oficina.'
-      : 'Comece adicionando pecas e itens de estoque.';
+    searchQuery.trim().length > 0
+      ? 'Tente buscar por outro nome, descricao ou categoria.'
+      : viewKind === 'service'
+        ? 'Comece adicionando servicos da sua oficina.'
+        : 'Comece adicionando pecas e itens de estoque.';
 
   if (products.length === 0) {
     return (

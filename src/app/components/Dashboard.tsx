@@ -14,6 +14,14 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
+function normalizeSearchValue(value: unknown) {
+  return String(value ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
 function isUnauthorizedError(error: unknown) {
   return (
     error instanceof Error &&
@@ -37,6 +45,8 @@ export function Dashboard({
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [categorySearch, setCategorySearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -91,7 +101,39 @@ export function Dashboard({
     [products],
   );
 
+  const categoryNamesById = useMemo(
+    () =>
+      new Map(
+        categories.map((category) => [category.id, category.name ?? 'Sem categoria']),
+      ),
+    [categories],
+  );
+
   const visibleProducts = itemView === 'service' ? serviceProducts : stockProducts;
+
+  const filteredProducts = useMemo(() => {
+    const query = normalizeSearchValue(productSearch);
+
+    if (!query) return visibleProducts;
+
+    return visibleProducts.filter((product) => {
+      const categoryName = categoryNamesById.get(product.category) || '';
+
+      return [product.name, product.description, categoryName].some((value) =>
+        normalizeSearchValue(value).includes(query),
+      );
+    });
+  }, [visibleProducts, productSearch, categoryNamesById]);
+
+  const filteredCategories = useMemo(() => {
+    const query = normalizeSearchValue(categorySearch);
+
+    if (!query) return categories;
+
+    return categories.filter((category) =>
+      normalizeSearchValue(category.name).includes(query),
+    );
+  }, [categories, categorySearch]);
 
   const stats = useMemo(
     () => ({
@@ -228,7 +270,7 @@ export function Dashboard({
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-600">
-                  AutoMaster
+                  sistema para oficinas
                 </p>
                 <h1 className="text-2xl font-bold text-slate-900">
                   Painel da oficina
@@ -369,6 +411,50 @@ export function Dashboard({
                   </div>
                 </div>
 
+                {!showProductForm && (
+                  <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="relative w-full max-w-2xl">
+                      <svg
+                        className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                      <input
+                        type="search"
+                        value={productSearch}
+                        onChange={(e) => setProductSearch(e.target.value)}
+                        placeholder={
+                          itemView === 'service'
+                            ? 'Buscar servico por nome, descricao ou categoria'
+                            : 'Buscar item por nome, descricao ou categoria'
+                        }
+                        className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-24 text-sm text-slate-700 shadow-sm outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-200"
+                      />
+                      {productSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setProductSearch('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg px-3 py-1 text-xs font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                        >
+                          Limpar
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-500">
+                      {filteredProducts.length} de {visibleProducts.length}{' '}
+                      {itemView === 'service' ? 'servicos' : 'itens'}
+                    </p>
+                  </div>
+                )}
+
                 {showProductForm ? (
                   <ProductForm
                     categories={categories}
@@ -383,9 +469,10 @@ export function Dashboard({
                   />
                 ) : (
                   <ProductList
-                    products={visibleProducts}
+                    products={filteredProducts}
                     categories={categories}
                     viewKind={itemView}
+                    searchQuery={productSearch}
                     onEdit={(product) => {
                       setEditingProduct(product);
                       setShowProductForm(true);
@@ -416,6 +503,45 @@ export function Dashboard({
                   </button>
                 </div>
 
+                {!showCategoryForm && (
+                  <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="relative w-full max-w-2xl">
+                      <svg
+                        className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                      <input
+                        type="search"
+                        value={categorySearch}
+                        onChange={(e) => setCategorySearch(e.target.value)}
+                        placeholder="Buscar categoria por nome"
+                        className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-24 text-sm text-slate-700 shadow-sm outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-200"
+                      />
+                      {categorySearch && (
+                        <button
+                          type="button"
+                          onClick={() => setCategorySearch('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg px-3 py-1 text-xs font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                        >
+                          Limpar
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-500">
+                      {filteredCategories.length} de {categories.length} categorias
+                    </p>
+                  </div>
+                )}
+
                 {showCategoryForm ? (
                   <CategoryForm
                     onSubmit={handleCategorySubmit}
@@ -424,7 +550,8 @@ export function Dashboard({
                   />
                 ) : (
                   <CategoryList
-                    categories={categories}
+                    categories={filteredCategories}
+                    searchQuery={categorySearch}
                     onDelete={handleDeleteCategory}
                   />
                 )}
