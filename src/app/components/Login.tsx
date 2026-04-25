@@ -30,6 +30,36 @@ const featureCards = [
   },
 ];
 
+async function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function signInWithRetry(email: string, password: string) {
+  const delays = [0, 400, 1200];
+  let lastError: unknown = null;
+
+  for (const delay of delays) {
+    if (delay > 0) {
+      await wait(delay);
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (!error && data.session?.access_token) {
+      return data.session;
+    }
+
+    lastError = error || new Error('Sessao nao retornada pelo Supabase');
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Nao foi possivel iniciar a sessao apos criar a conta.');
+}
+
 function getAuthMessage(error: unknown, mode: 'signup' | 'signin') {
   const fallback =
     mode === 'signup'
@@ -78,31 +108,31 @@ export function Login({ onLoginSuccess }: LoginProps) {
     setLoading(true);
 
     try {
-      const normalizedEmail = email.trim();
+      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedName = name.trim();
 
       await publicApiRequest<SignupResponse>('/auth/signup', {
         method: 'POST',
         body: JSON.stringify({
           email: normalizedEmail,
           password,
-          name: name.trim(),
+          name: normalizedName,
         }),
       });
 
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: normalizedEmail,
-        password,
-      });
-
-      if (signInError) {
-        throw signInError;
+      try {
+        const session = await signInWithRetry(normalizedEmail, password);
+        onLoginSuccess(session.access_token, normalizedEmail);
+        return;
+      } catch (signInAfterSignupError) {
+        console.error('Signup signin retry error:', signInAfterSignupError);
       }
 
-      if (!data.session?.access_token) {
-        throw new Error('Sessao nao retornada pelo Supabase');
-      }
-
-      onLoginSuccess(data.session.access_token, normalizedEmail);
+      setSuccess(
+        'Conta criada com sucesso. Aguarde alguns segundos e entre com seu email e senha.',
+      );
+      setIsSignup(false);
+      setPassword('');
     } catch (err) {
       console.error('Signup error:', err);
       setError(getAuthMessage(err, 'signup'));
@@ -119,7 +149,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
 
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password,
       });
 
@@ -129,7 +159,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
         throw new Error('Sessao nao retornada pelo Supabase');
       }
 
-      onLoginSuccess(data.session.access_token, email.trim());
+      onLoginSuccess(data.session.access_token, email.trim().toLowerCase());
     } catch (err) {
       console.error('Signin error:', err);
       setError(getAuthMessage(err, 'signin'));

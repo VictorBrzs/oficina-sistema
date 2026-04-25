@@ -58,15 +58,25 @@ app.get("/make-server-8db4781d/health", (c) => {
 app.post("/make-server-8db4781d/auth/signup", async (c) => {
   try {
     const { email, password, name } = await c.req.json();
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const normalizedName = String(name || '').trim();
 
-    if (!email || !password) {
+    if (!normalizedEmail || !password) {
       return c.json({ error: 'Email and password are required' }, 400);
     }
 
+    if (password.length < 6) {
+      return c.json({ error: 'Password must be at least 6 characters long' }, 400);
+    }
+
+    if (!normalizedName) {
+      return c.json({ error: 'Name is required' }, 400);
+    }
+
     const { data, error } = await supabase.auth.admin.createUser({
-      email,
+      email: normalizedEmail,
       password,
-      user_metadata: { name: name || '' },
+      user_metadata: { name: normalizedName },
       email_confirm: true
     });
 

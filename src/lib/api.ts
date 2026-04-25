@@ -1,4 +1,4 @@
-import { apiBaseUrl } from './supabase';
+import { apiBaseUrl, publicAnonKey } from './supabase';
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const data = await response.json().catch(() => null);
@@ -51,6 +51,7 @@ export async function publicApiRequest<T>(
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      Authorization: `Bearer ${publicAnonKey}`,
       ...init?.headers,
     },
   });
