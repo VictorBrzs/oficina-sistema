@@ -252,18 +252,18 @@ export function ProductForm({
         />
       </div>
 
-      <div className="flex justify-end space-x-3">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:space-x-0">
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 transition hover:bg-gray-50"
+          className="rounded-lg border border-gray-300 px-4 py-3 text-gray-700 transition hover:bg-gray-50 sm:py-2"
           disabled={submitting}
         >
           Cancelar
         </button>
         <button
           type="submit"
-          className="rounded-lg bg-orange-600 px-4 py-2 text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-lg bg-orange-600 px-4 py-3 text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60 sm:py-2"
           disabled={submitting || !hasCategories || (isService && !hasClients)}
         >
           {submitting ? 'Salvando...' : product?.id ? 'Atualizar' : 'Adicionar'}

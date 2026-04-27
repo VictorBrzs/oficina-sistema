@@ -1,5 +1,9 @@
 {
   "appId": "com.sistem.sistemaoficina",
-  "appName": "sistema oficina",
-  "webDir": "dist"
+  "appName": "Minha Oficina",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
 }

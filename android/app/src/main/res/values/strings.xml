@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">sistema oficina</string>
-    <string name="title_activity_main">sistema oficina</string>
+    <string name="app_name">Minha Oficina</string>
+    <string name="title_activity_main">Minha Oficina</string>
     <string name="package_name">com.sistem.sistemaoficina</string>
     <string name="custom_url_scheme">com.sistem.sistemaoficina</string>
 </resources>

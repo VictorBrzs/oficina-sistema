@@ -121,18 +121,18 @@ export function StatsCards({ stats }: StatsCardsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-7">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
       {cards.map((card, index) => (
         <div
           key={index}
-          className="rounded-[1.5rem] border border-white/70 bg-white/80 p-6 shadow-lg shadow-slate-200/30 backdrop-blur"
+          className="rounded-[1.5rem] border border-white/70 bg-white/80 p-5 shadow-lg shadow-slate-200/30 backdrop-blur sm:p-6"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div>
               <p className="mb-1 text-sm font-medium text-gray-600">
                 {card.title}
               </p>
-              <p className="text-2xl font-bold text-gray-900">{card.value}</p>
+              <p className="text-xl font-bold text-gray-900 sm:text-2xl">{card.value}</p>
             </div>
             <div
               className={`rounded-2xl bg-gradient-to-br ${card.color} p-3 text-white shadow-lg`}

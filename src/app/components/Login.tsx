@@ -15,21 +15,6 @@ interface SignupResponse {
   };
 }
 
-const featureCards = [
-  {
-    label: 'Ordens',
-    description: 'Acompanhe servicos com mais clareza.',
-  },
-  {
-    label: 'Clientes',
-    description: 'Cadastros e historicos em um so lugar.',
-  },
-  {
-    label: 'Estoque',
-    description: 'Visual rapido para pecas e controle.',
-  },
-];
-
 async function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -192,10 +177,10 @@ export function Login({ onLoginSuccess }: LoginProps) {
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,_#fffaf5_0%,_#f8fafc_100%)]">
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.12),_transparent_24%),radial-gradient(circle_at_85%_20%,_rgba(15,23,42,0.05),_transparent_20%)] px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-6xl items-center">
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.12),_transparent_24%),radial-gradient(circle_at_85%_20%,_rgba(15,23,42,0.05),_transparent_20%)] px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-6xl items-center sm:min-h-[calc(100vh-3rem)]">
           <div className="grid w-full overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-[0_24px_90px_rgba(15,23,42,0.10)] lg:grid-cols-[1.08fr_0.92fr]">
-            <section className="relative flex flex-col justify-between gap-8 px-6 py-8 sm:px-10 sm:py-10 lg:px-12 lg:py-12">
+            <section className="relative flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-10 lg:px-12 lg:py-12">
               <div className="absolute right-10 top-10 h-24 w-24 rounded-full bg-orange-100" />
 
               <div className="relative">
@@ -203,34 +188,21 @@ export function Login({ onLoginSuccess }: LoginProps) {
                   sistema para oficinas
                 </div>
 
-                <h1 className="mt-6 max-w-3xl text-4xl font-semibold leading-[1.02] text-slate-950 sm:text-5xl">
+                <h1 className="mt-6 max-w-3xl text-3xl font-semibold leading-[1.02] text-slate-950 sm:text-5xl">
                   Gestao clara para a rotina da oficina.
                 </h1>
 
                 <p className="mt-5 max-w-xl text-base leading-8 text-slate-600 sm:text-lg">
-                  Uma tela direta, com o essencial para apresentar o sistema e
-                  facilitar o acesso de quem vai usar no dia a dia.
+                  Entre e gerencie clientes, servicos e estoque em um painel mais direto para o dia a dia.
                 </p>
-              </div>
 
-              <div className="grid gap-3 md:grid-cols-3">
-                {featureCards.map((card) => (
-                  <div
-                    key={card.label}
-                    className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4"
-                  >
-                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      {card.label}
-                    </p>
-                    <p className="mt-3 text-sm leading-7 text-slate-600">
-                      {card.description}
-                    </p>
-                  </div>
-                ))}
+                <div className="mt-8 inline-flex items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  Acesso rapido para a rotina da oficina
+                </div>
               </div>
             </section>
 
-            <aside className="border-t border-slate-200 bg-slate-50/80 px-6 py-8 sm:px-10 sm:py-10 lg:border-l lg:border-t-0 lg:px-12 lg:py-12">
+            <aside className="border-t border-slate-200 bg-slate-50/80 px-5 py-7 sm:px-10 sm:py-10 lg:border-l lg:border-t-0 lg:px-12 lg:py-12">
               <div className="mx-auto max-w-md">
                 <div className="flex items-start justify-between gap-4">
                   <div>

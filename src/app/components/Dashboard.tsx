@@ -354,7 +354,7 @@ export function Dashboard({
       <nav className="border-b border-white/50 bg-white/70 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-20 flex-col justify-between gap-4 py-4 md:flex-row md:items-center">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-lg shadow-orange-200">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
@@ -375,14 +375,14 @@ export function Dashboard({
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-600">
                   sistema para oficinas
                 </p>
-                <h1 className="text-2xl font-bold text-slate-900">
+                <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
                   Painel da oficina
                 </h1>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-right shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-left shadow-sm sm:text-right">
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                   Conectado
                 </p>
@@ -402,36 +402,29 @@ export function Dashboard({
       </nav>
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <section className="mb-8 grid gap-6 rounded-[2rem] border border-white/60 bg-slate-950 p-8 text-white shadow-2xl shadow-slate-300/30 lg:grid-cols-[1.2fr_0.8fr]">
-          <div>
-            <p className="text-sm uppercase tracking-[0.28em] text-orange-300">
-              Operacao conectada
-            </p>
-            <h2 className="mt-4 text-3xl font-semibold leading-tight">
-              Divida a operacao entre estoque, servicos e clientes sem perder visao do todo.
-            </h2>
-            <p className="mt-4 max-w-2xl text-slate-300">
-              Agora voce pode acompanhar itens fisicos, servicos prestados e a
-              carteira de clientes em areas separadas, com filtros e indicadores
-              mais claros.
-            </p>
-          </div>
-          <div className="grid gap-4 rounded-[1.5rem] border border-white/10 bg-white/5 p-5 text-sm text-slate-200">
-            <div className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3">
-              <span>Itens em estoque</span>
-              <strong>{stockProducts.length}</strong>
+        <section className="mb-8 rounded-[2rem] border border-white/60 bg-slate-950 p-5 text-white shadow-2xl shadow-slate-300/30 sm:p-8">
+          <p className="text-sm uppercase tracking-[0.28em] text-orange-300">
+            Painel simplificado
+          </p>
+          <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold leading-tight sm:text-3xl">
+                Estoque, servicos e clientes em um unico fluxo.
+              </h2>
+              <p className="mt-3 max-w-2xl text-slate-300">
+                Use as abas para cadastrar e consultar o que precisa, sem excesso de informacao na entrada.
+              </p>
             </div>
-            <div className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3">
-              <span>Servicos cadastrados</span>
-              <strong>{serviceProducts.length}</strong>
-            </div>
-            <div className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3">
-              <span>Categorias ativas</span>
-              <strong>{categories.length}</strong>
-            </div>
-            <div className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3">
-              <span>Clientes cadastrados</span>
-              <strong>{clients.length}</strong>
+            <div className="flex flex-wrap gap-2 text-sm">
+              <span className="rounded-full bg-white/10 px-3 py-2 text-slate-100">
+                {stockProducts.length} estoque
+              </span>
+              <span className="rounded-full bg-white/10 px-3 py-2 text-slate-100">
+                {serviceProducts.length} servicos
+              </span>
+              <span className="rounded-full bg-white/10 px-3 py-2 text-slate-100">
+                {clients.length} clientes
+              </span>
             </div>
           </div>
         </section>
@@ -446,10 +439,10 @@ export function Dashboard({
 
         <div className="mt-8 rounded-[2rem] border border-white/70 bg-white/80 shadow-xl shadow-slate-300/20 backdrop-blur">
           <div className="border-b">
-            <div className="flex space-x-6 px-6">
+            <div className="flex gap-2 overflow-x-auto px-4 sm:px-6">
               <button
                 onClick={() => setActiveTab('products')}
-                className={`py-5 border-b-2 font-medium text-sm transition ${
+                className={`shrink-0 border-b-2 px-2 py-4 font-medium text-sm transition sm:py-5 ${
                   activeTab === 'products'
                     ? 'border-orange-600 text-orange-600'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -459,7 +452,7 @@ export function Dashboard({
               </button>
               <button
                 onClick={() => setActiveTab('categories')}
-                className={`py-5 border-b-2 font-medium text-sm transition ${
+                className={`shrink-0 border-b-2 px-2 py-4 font-medium text-sm transition sm:py-5 ${
                   activeTab === 'categories'
                     ? 'border-orange-600 text-orange-600'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -469,7 +462,7 @@ export function Dashboard({
               </button>
               <button
                 onClick={() => setActiveTab('clients')}
-                className={`py-5 border-b-2 font-medium text-sm transition ${
+                className={`shrink-0 border-b-2 px-2 py-4 font-medium text-sm transition sm:py-5 ${
                   activeTab === 'clients'
                     ? 'border-orange-600 text-orange-600'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -480,7 +473,7 @@ export function Dashboard({
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {activeTab === 'products' && (
               <>
                 <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -497,7 +490,7 @@ export function Dashboard({
                     <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
                       <button
                         onClick={() => setItemView('stock')}
-                        className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                        className={`rounded-lg px-3 py-2 text-sm font-medium transition sm:px-4 ${
                           itemView === 'stock'
                             ? 'bg-white text-orange-600 shadow-sm'
                             : 'text-slate-600 hover:text-slate-900'
@@ -507,7 +500,7 @@ export function Dashboard({
                       </button>
                       <button
                         onClick={() => setItemView('service')}
-                        className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                        className={`rounded-lg px-3 py-2 text-sm font-medium transition sm:px-4 ${
                           itemView === 'service'
                             ? 'bg-white text-orange-600 shadow-sm'
                             : 'text-slate-600 hover:text-slate-900'
@@ -522,7 +515,7 @@ export function Dashboard({
                         setNewItemKind(itemView);
                         setShowProductForm(true);
                       }}
-                      className="rounded-xl bg-orange-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-orange-700"
+                      className="rounded-xl bg-orange-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-orange-700 sm:px-4"
                     >
                       {itemView === 'service' ? '+ Novo servico' : '+ Novo item'}
                     </button>
