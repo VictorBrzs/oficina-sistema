@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .vercel/
+oficina-sistema-main/
 
 vite.log
 vite.err.log
