@@ -6,6 +6,7 @@ interface Product {
   name: string;
   description: string;
   category: string;
+  clientId?: string;
   price: number;
   stock: number;
   image?: string;
@@ -14,6 +15,7 @@ interface Product {
 interface ProductListProps {
   products: Product[];
   categories: any[];
+  clients: any[];
   viewKind: ItemKind;
   searchQuery?: string;
   onEdit: (product: Product) => void;
@@ -23,6 +25,7 @@ interface ProductListProps {
 export function ProductList({
   products,
   categories,
+  clients,
   viewKind,
   searchQuery = '',
   onEdit,
@@ -38,6 +41,11 @@ export function ProductList({
     return category?.color || '#6366f1';
   };
 
+  const getClientName = (clientId?: string) => {
+    const client = clients.find((item) => item.id === clientId);
+    return client?.name || 'Sem cliente';
+  };
+
   const emptyTitle =
     searchQuery.trim().length > 0
       ? viewKind === 'service'
@@ -48,9 +56,11 @@ export function ProductList({
         : 'Nenhum item de estoque cadastrado';
   const emptyText =
     searchQuery.trim().length > 0
-      ? 'Tente buscar por outro nome, descricao ou categoria.'
+      ? viewKind === 'service'
+        ? 'Tente buscar por outro nome, cliente, descricao ou categoria.'
+        : 'Tente buscar por outro nome, descricao ou categoria.'
       : viewKind === 'service'
-        ? 'Comece adicionando servicos da sua oficina.'
+        ? 'Comece adicionando servicos e vinculando cada um a um cliente.'
         : 'Comece adicionando pecas e itens de estoque.';
 
   if (products.length === 0) {
@@ -83,6 +93,11 @@ export function ProductList({
             <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
               {viewKind === 'service' ? 'Servico' : 'Item'}
             </th>
+            {viewKind === 'service' && (
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                Cliente
+              </th>
+            )}
             <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
               Categoria
             </th>
@@ -144,6 +159,16 @@ export function ProductList({
                     </div>
                   </div>
                 </td>
+                {viewKind === 'service' && (
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-700">
+                    <div className="font-medium text-slate-900">
+                      {getClientName(product.clientId)}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      Atendimento vinculado
+                    </div>
+                  </td>
+                )}
                 <td className="whitespace-nowrap px-6 py-4">
                   <span
                     className="inline-flex rounded-full px-2 text-xs font-semibold leading-5 text-white"

@@ -2,10 +2,22 @@ import { apiBaseUrl, publicAnonKey } from './supabase';
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const data = await response.json().catch(() => null);
+  const responseText =
+    typeof data === 'string'
+      ? data
+      : response.statusText || 'Resposta inesperada do servidor.';
 
   if (!response.ok) {
     const message =
-      data?.error || data?.message || 'Nao foi possivel concluir a requisicao.';
+      data?.error ||
+      data?.message ||
+      (response.status === 404
+        ? 'Recurso do Supabase nao encontrado. A Edge Function pode precisar ser publicada ou atualizada.'
+        : response.status === 401
+          ? 'Acesso nao autorizado pelo Supabase. Entre novamente e tente outra vez.'
+          : response.status >= 500
+            ? 'O Supabase retornou um erro interno. Tente novamente em alguns instantes.'
+            : `Nao foi possivel concluir a requisicao (${response.status}: ${responseText}).`);
     throw new Error(message);
   }
 
@@ -51,6 +63,7 @@ export async function publicApiRequest<T>(
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      apikey: publicAnonKey,
       Authorization: `Bearer ${publicAnonKey}`,
       ...init?.headers,
     },

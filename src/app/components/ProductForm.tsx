@@ -8,6 +8,7 @@ import {
 
 interface ProductFormProps {
   categories: any[];
+  clients: any[];
   product?: any;
   initialKind?: ItemKind;
   onSubmit: (data: any) => void;
@@ -17,6 +18,7 @@ interface ProductFormProps {
 
 export function ProductForm({
   categories,
+  clients,
   product,
   initialKind = 'stock',
   onSubmit,
@@ -28,6 +30,7 @@ export function ProductForm({
     name: '',
     description: '',
     category: '',
+    clientId: '',
     price: '',
     stock: '',
     image: '',
@@ -41,6 +44,7 @@ export function ProductForm({
         name: product.name || '',
         description: stripItemMarker(product.description),
         category: product.category || '',
+        clientId: product.clientId || '',
         price: product.price?.toString() || '',
         stock: kind === 'service' ? '' : product.stock?.toString() || '',
         image: product.image || '',
@@ -53,17 +57,19 @@ export function ProductForm({
       name: '',
       description: '',
       category: categories[0]?.id || '',
+      clientId: initialKind === 'service' ? clients[0]?.id || '' : '',
       price: '',
       stock: '',
       image: '',
     });
-  }, [product, categories, initialKind]);
+  }, [product, categories, clients, initialKind]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
       ...formData,
       kind: formData.kind,
+      clientId: formData.kind === 'service' ? formData.clientId : '',
       description: encodeDescriptionForKind(formData.kind, formData.description),
       price: Number(formData.price),
       stock: formData.kind === 'service' ? 0 : Number(formData.stock),
@@ -72,6 +78,7 @@ export function ProductForm({
 
   const hasCategories = categories.length > 0;
   const isService = formData.kind === 'service';
+  const hasClients = clients.length > 0;
 
   return (
     <form
@@ -81,6 +88,12 @@ export function ProductForm({
       {!hasCategories && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Crie pelo menos uma categoria antes de cadastrar itens.
+        </div>
+      )}
+
+      {isService && !hasClients && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Cadastre pelo menos um cliente antes de salvar um servico.
         </div>
       )}
 
@@ -95,6 +108,10 @@ export function ProductForm({
               setFormData((current) => ({
                 ...current,
                 kind: e.target.value === 'service' ? 'service' : 'stock',
+                clientId:
+                  e.target.value === 'service'
+                    ? current.clientId || clients[0]?.id || ''
+                    : '',
                 stock: e.target.value === 'service' ? '' : current.stock,
               }))
             }
@@ -161,6 +178,30 @@ export function ProductForm({
           />
         </div>
 
+        {isService && (
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Cliente *
+            </label>
+            <select
+              value={formData.clientId}
+              onChange={(e) =>
+                setFormData({ ...formData, clientId: e.target.value })
+              }
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-orange-500"
+              required={isService}
+              disabled={!hasClients}
+            >
+              <option value="">Selecione um cliente</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {!isService && (
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">
@@ -191,7 +232,7 @@ export function ProductForm({
           className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-orange-500"
           placeholder={
             isService
-              ? 'Detalhes do servico, tempo medio, observacoes...'
+              ? 'Descreva o servico executado para esse cliente...'
               : 'Codigo de referencia, marca, aplicacao, observacoes...'
           }
           rows={3}
@@ -223,7 +264,7 @@ export function ProductForm({
         <button
           type="submit"
           className="rounded-lg bg-orange-600 px-4 py-2 text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={submitting || !hasCategories}
+          disabled={submitting || !hasCategories || (isService && !hasClients)}
         >
           {submitting ? 'Salvando...' : product?.id ? 'Atualizar' : 'Adicionar'}
         </button>

@@ -7,6 +7,7 @@ interface StatsCardsProps {
     lowStockCount?: number;
     totalStockItems?: number;
     totalServices?: number;
+    totalClients?: number;
   };
 }
 
@@ -41,6 +42,21 @@ export function StatsCards({ stats }: StatsCardsProps) {
         </svg>
       ),
       color: 'from-violet-500 to-purple-600',
+    },
+    {
+      title: 'Clientes',
+      value: stats.totalClients || 0,
+      icon: (
+        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M17 20h5V4H2v16h5m10 0v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4m10 0H7m5-12a2 2 0 110 4 2 2 0 010-4z"
+          />
+        </svg>
+      ),
+      color: 'from-cyan-500 to-sky-600',
     },
     {
       title: 'Valor em Estoque',
@@ -105,7 +121,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-7">
       {cards.map((card, index) => (
         <div
           key={index}

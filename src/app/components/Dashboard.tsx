@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CategoryForm } from './CategoryForm';
 import { CategoryList } from './CategoryList';
+import { ClientForm } from './ClientForm';
+import { ClientList } from './ClientList';
 import { ProductForm } from './ProductForm';
 import { ProductList } from './ProductList';
 import { StatsCards } from './StatsCards';
@@ -35,18 +37,22 @@ export function Dashboard({
   onAuthFailure,
   onLogout,
 }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<'products' | 'categories'>(
+  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'clients'>(
     'products',
   );
   const [itemView, setItemView] = useState<ItemKind>('stock');
   const [newItemKind, setNewItemKind] = useState<ItemKind>('stock');
   const [showProductForm, setShowProductForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [showClientForm, setShowClientForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [editingClient, setEditingClient] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
+  const [clientSearch, setClientSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -67,10 +73,22 @@ export function Dashboard({
     try {
       setError('');
 
-      const [productsData, categoriesData] = await Promise.all([
+      const [productsResult, categoriesResult, clientsResult] = await Promise.allSettled([
         apiRequest<{ products: any[] }>('/products', accessToken),
         apiRequest<{ categories: any[] }>('/categories', accessToken),
+        apiRequest<{ clients: any[] }>('/clients', accessToken),
       ]);
+
+      if (productsResult.status === 'rejected') {
+        throw productsResult.reason;
+      }
+
+      if (categoriesResult.status === 'rejected') {
+        throw categoriesResult.reason;
+      }
+
+      const productsData = productsResult.value;
+      const categoriesData = categoriesResult.value;
 
       setProducts(
         (productsData.products || []).sort((a, b) => a.name.localeCompare(b.name)),
@@ -80,6 +98,19 @@ export function Dashboard({
           a.name.localeCompare(b.name),
         ),
       );
+
+      if (clientsResult.status === 'fulfilled') {
+        setClients(
+          (clientsResult.value.clients || []).sort((a, b) =>
+            a.name.localeCompare(b.name),
+          ),
+        );
+      } else {
+        setClients([]);
+        setError(
+          'A area de clientes precisa da Edge Function atualizada no Supabase para funcionar por completo.',
+        );
+      }
     } catch (error) {
       await handleApiError(error, 'Nao foi possivel carregar os dados da oficina.');
     } finally {
@@ -109,6 +140,12 @@ export function Dashboard({
     [categories],
   );
 
+  const clientNamesById = useMemo(
+    () =>
+      new Map(clients.map((client) => [client.id, client.name ?? 'Sem cliente'])),
+    [clients],
+  );
+
   const visibleProducts = itemView === 'service' ? serviceProducts : stockProducts;
 
   const filteredProducts = useMemo(() => {
@@ -118,12 +155,13 @@ export function Dashboard({
 
     return visibleProducts.filter((product) => {
       const categoryName = categoryNamesById.get(product.category) || '';
+      const clientName = clientNamesById.get(product.clientId) || '';
 
-      return [product.name, product.description, categoryName].some((value) =>
+      return [product.name, product.description, categoryName, clientName].some((value) =>
         normalizeSearchValue(value).includes(query),
       );
     });
-  }, [visibleProducts, productSearch, categoryNamesById]);
+  }, [visibleProducts, productSearch, categoryNamesById, clientNamesById]);
 
   const filteredCategories = useMemo(() => {
     const query = normalizeSearchValue(categorySearch);
@@ -134,6 +172,23 @@ export function Dashboard({
       normalizeSearchValue(category.name).includes(query),
     );
   }, [categories, categorySearch]);
+
+  const filteredClients = useMemo(() => {
+    const query = normalizeSearchValue(clientSearch);
+
+    if (!query) return clients;
+
+    return clients.filter((client) =>
+      [
+        client.name,
+        client.phone,
+        client.email,
+        client.document,
+        client.vehicle,
+        client.licensePlate,
+      ].some((value) => normalizeSearchValue(value).includes(query)),
+    );
+  }, [clients, clientSearch]);
 
   const stats = useMemo(
     () => ({
@@ -152,8 +207,9 @@ export function Dashboard({
       lowStockCount: stockProducts.filter(
         (product) => Number(product.stock || 0) < 10,
       ).length,
+      totalClients: clients.length,
     }),
-    [products, stockProducts, serviceProducts, categories],
+    [products, stockProducts, serviceProducts, categories, clients],
   );
 
   const handleProductSubmit = async (productData: any) => {
@@ -210,6 +266,53 @@ export function Dashboard({
       await handleApiError(error, 'Nao foi possivel salvar a categoria.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleClientSubmit = async (clientData: any) => {
+    try {
+      setSubmitting(true);
+      setError('');
+
+      await apiRequest(
+        editingClient?.id ? `/clients/${editingClient.id}` : '/clients',
+        accessToken,
+        {
+          method: editingClient?.id ? 'PUT' : 'POST',
+          body: JSON.stringify(clientData),
+        },
+      );
+
+      await fetchData();
+      setShowClientForm(false);
+      setEditingClient(null);
+    } catch (error) {
+      await handleApiError(error, 'Nao foi possivel salvar o cliente.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteClient = async (id: string) => {
+    const linkedServices = products.filter(
+      (product) => inferItemKind(product) === 'service' && product.clientId === id,
+    );
+
+    if (linkedServices.length > 0) {
+      setError('Esse cliente ainda esta vinculado a servicos cadastrados.');
+      return;
+    }
+
+    if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
+
+    try {
+      setError('');
+      await apiRequest(`/clients/${id}`, accessToken, {
+        method: 'DELETE',
+      });
+      await fetchData();
+    } catch (error) {
+      await handleApiError(error, 'Nao foi possivel excluir o cliente.');
     }
   };
 
@@ -305,11 +408,12 @@ export function Dashboard({
               Operacao conectada
             </p>
             <h2 className="mt-4 text-3xl font-semibold leading-tight">
-              Divida a operacao entre estoque e servicos sem perder visao do todo.
+              Divida a operacao entre estoque, servicos e clientes sem perder visao do todo.
             </h2>
             <p className="mt-4 max-w-2xl text-slate-300">
-              Agora voce pode acompanhar itens fisicos e servicos prestados em
-              areas separadas, com filtros e indicadores mais claros.
+              Agora voce pode acompanhar itens fisicos, servicos prestados e a
+              carteira de clientes em areas separadas, com filtros e indicadores
+              mais claros.
             </p>
           </div>
           <div className="grid gap-4 rounded-[1.5rem] border border-white/10 bg-white/5 p-5 text-sm text-slate-200">
@@ -324,6 +428,10 @@ export function Dashboard({
             <div className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3">
               <span>Categorias ativas</span>
               <strong>{categories.length}</strong>
+            </div>
+            <div className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3">
+              <span>Clientes cadastrados</span>
+              <strong>{clients.length}</strong>
             </div>
           </div>
         </section>
@@ -359,6 +467,16 @@ export function Dashboard({
               >
                 Categorias
               </button>
+              <button
+                onClick={() => setActiveTab('clients')}
+                className={`py-5 border-b-2 font-medium text-sm transition ${
+                  activeTab === 'clients'
+                    ? 'border-orange-600 text-orange-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Clientes
+              </button>
             </div>
           </div>
 
@@ -372,7 +490,7 @@ export function Dashboard({
                     </h2>
                     <p className="text-sm text-slate-500">
                       Alterne entre itens fisicos e servicos para organizar melhor
-                      a operacao diaria.
+                      a operacao diaria e vincular cada atendimento a um cliente.
                     </p>
                   </div>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -433,7 +551,7 @@ export function Dashboard({
                         onChange={(e) => setProductSearch(e.target.value)}
                         placeholder={
                           itemView === 'service'
-                            ? 'Buscar servico por nome, descricao ou categoria'
+                            ? 'Buscar servico por nome, cliente, descricao ou categoria'
                             : 'Buscar item por nome, descricao ou categoria'
                         }
                         className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-24 text-sm text-slate-700 shadow-sm outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-200"
@@ -458,6 +576,7 @@ export function Dashboard({
                 {showProductForm ? (
                   <ProductForm
                     categories={categories}
+                    clients={clients}
                     product={editingProduct}
                     initialKind={editingProduct?.id ? inferItemKind(editingProduct) : newItemKind}
                     onSubmit={handleProductSubmit}
@@ -471,6 +590,7 @@ export function Dashboard({
                   <ProductList
                     products={filteredProducts}
                     categories={categories}
+                    clients={clients}
                     viewKind={itemView}
                     searchQuery={productSearch}
                     onEdit={(product) => {
@@ -478,6 +598,92 @@ export function Dashboard({
                       setShowProductForm(true);
                     }}
                     onDelete={handleDeleteProduct}
+                  />
+                )}
+              </>
+            )}
+
+            {activeTab === 'clients' && (
+              <>
+                <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">
+                      Gerenciar clientes
+                    </h2>
+                    <p className="text-sm text-slate-500">
+                      Cadastre os dados dos clientes e vincule cada servico ao
+                      atendimento correto.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingClient(null);
+                      setShowClientForm(true);
+                    }}
+                    className="rounded-xl bg-orange-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-orange-700"
+                  >
+                    + Novo cliente
+                  </button>
+                </div>
+
+                {!showClientForm && (
+                  <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="relative w-full max-w-2xl">
+                      <svg
+                        className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                      <input
+                        type="search"
+                        value={clientSearch}
+                        onChange={(e) => setClientSearch(e.target.value)}
+                        placeholder="Buscar cliente por nome, telefone, email, documento ou placa"
+                        className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-24 text-sm text-slate-700 shadow-sm outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-200"
+                      />
+                      {clientSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setClientSearch('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg px-3 py-1 text-xs font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                        >
+                          Limpar
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-500">
+                      {filteredClients.length} de {clients.length} clientes
+                    </p>
+                  </div>
+                )}
+
+                {showClientForm ? (
+                  <ClientForm
+                    client={editingClient}
+                    onSubmit={handleClientSubmit}
+                    onCancel={() => {
+                      setShowClientForm(false);
+                      setEditingClient(null);
+                    }}
+                    submitting={submitting}
+                  />
+                ) : (
+                  <ClientList
+                    clients={filteredClients}
+                    searchQuery={clientSearch}
+                    onEdit={(client) => {
+                      setEditingClient(client);
+                      setShowClientForm(true);
+                    }}
+                    onDelete={handleDeleteClient}
                   />
                 )}
               </>

@@ -60,6 +60,22 @@ async function signInWithRetry(email: string, password: string) {
     : new Error('Nao foi possivel iniciar a sessao apos criar a conta.');
 }
 
+async function signUpWithSupabaseAuth(email: string, password: string, name: string) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { name },
+    },
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
 function getAuthMessage(error: unknown, mode: 'signup' | 'signin') {
   const fallback =
     mode === 'signup'
@@ -111,14 +127,20 @@ export function Login({ onLoginSuccess }: LoginProps) {
       const normalizedEmail = email.trim().toLowerCase();
       const normalizedName = name.trim();
 
-      await publicApiRequest<SignupResponse>('/auth/signup', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: normalizedEmail,
-          password,
-          name: normalizedName,
-        }),
-      });
+      try {
+        await publicApiRequest<SignupResponse>('/auth/signup', {
+          method: 'POST',
+          body: JSON.stringify({
+            email: normalizedEmail,
+            password,
+            name: normalizedName,
+          }),
+        });
+      } catch (signupFunctionError) {
+        console.error('Signup function error:', signupFunctionError);
+
+        await signUpWithSupabaseAuth(normalizedEmail, password, normalizedName);
+      }
 
       try {
         const session = await signInWithRetry(normalizedEmail, password);
