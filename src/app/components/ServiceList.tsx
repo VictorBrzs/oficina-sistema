@@ -1,5 +1,6 @@
 import type { Client, ServiceOrder } from '@/lib/workshop';
 import {
+  formatCurrency,
   getServiceStatusClasses,
   getServiceStatusLabel,
 } from '@/lib/workshop';
@@ -56,6 +57,15 @@ export function ServiceList({
             </div>
 
             <p className="text-sm leading-7 text-slate-600">{service.details}</p>
+
+            <div className="rounded-2xl bg-slate-50 px-3 py-2 text-sm">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                Valor
+              </p>
+              <p className="mt-1 font-semibold text-slate-900">
+                {formatCurrency(service.price)}
+              </p>
+            </div>
 
             <div className="flex gap-2">
               <button

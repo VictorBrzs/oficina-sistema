@@ -30,6 +30,7 @@ export interface ServiceOrder {
   clientId: string;
   title: string;
   details: string;
+  price: number;
   status: ServiceStatus;
   createdAt?: string;
   updatedAt?: string;

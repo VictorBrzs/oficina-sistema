@@ -45,6 +45,7 @@ export function Dashboard({
   const [services, setServices] = useState<ServiceOrder[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [showClientHistory, setShowClientHistory] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -215,6 +216,7 @@ export function Dashboard({
     clientId: string;
     title: string;
     details: string;
+    price: number;
     status: ServiceOrder['status'];
   }) => {
     try {
@@ -453,7 +455,7 @@ export function Dashboard({
                   <div>
                     <h2 className="text-lg font-semibold text-slate-900">Servicos</h2>
                     <p className="text-sm text-slate-500">
-                      Ordens abertas com status e detalhes do atendimento.
+                      Ordens abertas com status, detalhes e valor do atendimento.
                     </p>
                   </div>
                   <button
@@ -543,32 +545,33 @@ export function Dashboard({
                     submitting={submitting}
                   />
                 ) : (
-                  <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-                    <div>
-                      <ClientList
-                        clients={filteredClients}
-                        selectedClientId={selectedClient?.id}
-                        onSelect={setSelectedClient}
-                        onEdit={(client) => {
-                          setEditingClient(client);
-                          setShowClientForm(true);
-                        }}
-                        onDelete={handleDeleteClient}
-                      />
-                    </div>
-                    <div>
-                      <ClientHistoryPanel
-                        client={selectedClient}
-                        history={selectedClientHistory}
-                      />
-                    </div>
-                  </div>
+                  <ClientList
+                    clients={filteredClients}
+                    selectedClientId={selectedClient?.id}
+                    onSelect={(client) => {
+                      setSelectedClient(client);
+                      setShowClientHistory(true);
+                    }}
+                    onEdit={(client) => {
+                      setEditingClient(client);
+                      setShowClientForm(true);
+                    }}
+                    onDelete={handleDeleteClient}
+                  />
                 )}
               </section>
             )}
           </div>
         </div>
       </main>
+
+      {showClientHistory && (
+        <ClientHistoryPanel
+          client={selectedClient}
+          history={selectedClientHistory}
+          onClose={() => setShowClientHistory(false)}
+        />
+      )}
     </div>
   );
 }

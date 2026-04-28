@@ -8,6 +8,7 @@ interface ServiceFormProps {
     clientId: string;
     title: string;
     details: string;
+    price: number;
     status: ServiceStatus;
   }) => void | Promise<void>;
   onCancel: () => void;
@@ -25,6 +26,7 @@ export function ServiceForm({
     clientId: '',
     title: '',
     details: '',
+    price: '',
     status: 'pending' as ServiceStatus,
   });
 
@@ -33,6 +35,7 @@ export function ServiceForm({
       clientId: service?.clientId || clients[0]?.id || '',
       title: service?.title || '',
       details: service?.details || '',
+      price: service ? String(service.price ?? 0) : '',
       status: service?.status || 'pending',
     });
   }, [service, clients]);
@@ -43,6 +46,7 @@ export function ServiceForm({
       clientId: formData.clientId,
       title: formData.title.trim(),
       details: formData.details.trim(),
+      price: Number(formData.price),
       status: formData.status,
     });
   };
@@ -100,6 +104,24 @@ export function ServiceForm({
             <option value="in_progress">Em andamento</option>
             <option value="completed">Concluido</option>
           </select>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Valor do servico *
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={formData.price}
+            onChange={(event) =>
+              setFormData((current) => ({ ...current, price: event.target.value }))
+            }
+            className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-200"
+            placeholder="0,00"
+            required
+          />
         </div>
       </div>
 

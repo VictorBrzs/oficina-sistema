@@ -499,13 +499,18 @@ app.post("/make-server-8db4781d/services", requireAuth, async (c) => {
     const clientId = normalizeText(body.clientId);
     const title = normalizeText(body.title);
     const details = normalizeText(body.details);
+    const price = parseNumber(body.price);
     const status = normalizeServiceStatus(body.status);
 
-    if (!clientId || !title || !details) {
+    if (!clientId || !title || !details || Number.isNaN(price)) {
       return c.json(
-        { error: "Client, title and service details are required" },
+        { error: "Client, title, service details and price are required" },
         400,
       );
+    }
+
+    if (price < 0) {
+      return c.json({ error: "Price must be zero or greater" }, 400);
     }
 
     const client = await ensureClientExists(userId, clientId);
@@ -521,6 +526,7 @@ app.post("/make-server-8db4781d/services", requireAuth, async (c) => {
       clientId,
       title,
       details,
+      price,
       status,
       createdAt: now,
       updatedAt: now,
@@ -549,13 +555,21 @@ app.put("/make-server-8db4781d/services/:id", requireAuth, async (c) => {
     const clientId = normalizeText(body.clientId ?? existingService.clientId);
     const title = normalizeText(body.title ?? existingService.title);
     const details = normalizeText(body.details ?? existingService.details);
+    const price =
+      body.price !== undefined
+        ? parseNumber(body.price)
+        : Number(existingService.price || 0);
     const status = normalizeServiceStatus(body.status ?? existingService.status);
 
-    if (!clientId || !title || !details) {
+    if (!clientId || !title || !details || Number.isNaN(price)) {
       return c.json(
-        { error: "Client, title and service details are required" },
+        { error: "Client, title, service details and price are required" },
         400,
       );
+    }
+
+    if (price < 0) {
+      return c.json({ error: "Price must be zero or greater" }, 400);
     }
 
     const client = await ensureClientExists(userId, clientId);
@@ -569,6 +583,7 @@ app.put("/make-server-8db4781d/services/:id", requireAuth, async (c) => {
       clientId,
       title,
       details,
+      price,
       status,
       updatedAt: new Date().toISOString(),
       completedAt:
