@@ -192,7 +192,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
                   <img
                     src="/simbolo-oficina.svg"
                     alt="Simbolo Minha Oficina"
-                    className="h-16 w-16 rounded-2xl border border-orange-100 bg-white object-contain p-2 shadow-sm"
+                    className="h-16 w-16 object-contain"
                   />
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
@@ -232,7 +232,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
                     <img
                       src="/simbolo-oficina.svg"
                       alt="Minha Oficina"
-                      className="h-5 w-5 rounded-full object-contain"
+                      className="h-5 w-5 object-contain"
                     />
                     Minha Oficina
                   </div>

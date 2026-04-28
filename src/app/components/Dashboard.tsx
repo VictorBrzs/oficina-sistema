@@ -321,18 +321,18 @@ export function Dashboard({
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-lg shadow-orange-100">
+              <div className="flex h-11 w-11 items-center justify-center">
                 <img
                   src="/simbolo-oficina.svg"
                   alt="Simbolo Minha Oficina"
-                  className="h-full w-full object-contain p-1.5"
+                  className="h-10 w-10 object-contain"
                 />
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
                   Minha Oficina
                 </p>
-                <h1 className="text-xl font-semibold text-slate-900">Painel simples</h1>
+                <h1 className="text-xl font-semibold text-slate-900">Painel da oficina</h1>
               </div>
             </div>
 
