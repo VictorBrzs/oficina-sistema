@@ -185,7 +185,21 @@ export function Login({ onLoginSuccess }: LoginProps) {
 
               <div className="relative">
                 <div className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-orange-700">
-                  sistema para oficinas
+                  Minha Oficina
+                </div>
+
+                <div className="mt-6 flex items-center gap-4">
+                  <img
+                    src="/logo-minha-oficina.png"
+                    alt="Logo Minha Oficina"
+                    className="h-16 w-16 rounded-2xl border border-orange-100 bg-white object-contain p-2 shadow-sm"
+                  />
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+                      Painel da oficina
+                    </p>
+                    <p className="text-xl font-semibold text-slate-950">Minha Oficina</p>
+                  </div>
                 </div>
 
                 <h1 className="mt-6 max-w-3xl text-3xl font-semibold leading-[1.02] text-slate-950 sm:text-5xl">
@@ -214,8 +228,13 @@ export function Login({ onLoginSuccess }: LoginProps) {
                     </h2>
                   </div>
 
-                  <div className="rounded-full border border-orange-200 bg-white px-3 py-1 text-xs font-medium text-orange-700">
-                    sistema para oficinas
+                  <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1.5 text-xs font-medium text-orange-700">
+                    <img
+                      src="/logo-minha-oficina.png"
+                      alt="Minha Oficina"
+                      className="h-5 w-5 rounded-full object-contain"
+                    />
+                    Minha Oficina
                   </div>
                 </div>
 
