@@ -321,11 +321,11 @@ export function Dashboard({
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center">
+              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-sm">
                 <img
-                  src="/simbolo-oficina.svg"
-                  alt="Simbolo Minha Oficina"
-                  className="h-10 w-10 object-contain"
+                  src="/logo-minha-oficina.png"
+                  alt="Minha Oficina"
+                  className="h-full w-full object-contain p-1.5"
                 />
               </div>
               <div>

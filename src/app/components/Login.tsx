@@ -190,9 +190,9 @@ export function Login({ onLoginSuccess }: LoginProps) {
 
                 <div className="mt-6 flex items-center gap-4">
                   <img
-                    src="/simbolo-oficina.svg"
-                    alt="Simbolo Minha Oficina"
-                    className="h-16 w-16 object-contain"
+                    src="/logo-minha-oficina.png"
+                    alt="Minha Oficina"
+                    className="h-20 w-20 rounded-3xl border border-orange-100 bg-white object-contain p-2 shadow-sm"
                   />
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
@@ -230,7 +230,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
 
                   <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1.5 text-xs font-medium text-orange-700">
                     <img
-                      src="/simbolo-oficina.svg"
+                      src="/logo-minha-oficina.png"
                       alt="Minha Oficina"
                       className="h-5 w-5 object-contain"
                     />
