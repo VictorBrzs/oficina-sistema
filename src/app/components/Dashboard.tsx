@@ -325,7 +325,7 @@ export function Dashboard({
                 <img
                   src="/logo-minha-oficina.png"
                   alt="Minha Oficina"
-                  className="h-full w-full object-contain p-1.5"
+                  className="h-[150%] w-[150%] -translate-y-[18%] object-contain"
                 />
               </div>
               <div>

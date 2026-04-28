@@ -192,7 +192,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
                   <img
                     src="/logo-minha-oficina.png"
                     alt="Minha Oficina"
-                    className="h-20 w-20 rounded-3xl border border-orange-100 bg-white object-contain p-2 shadow-sm"
+                    className="h-24 w-24 rounded-[1.75rem] border border-orange-100 bg-white object-contain p-2.5 shadow-[0_16px_34px_rgba(249,115,22,0.14)]"
                   />
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
@@ -228,12 +228,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
                     </h2>
                   </div>
 
-                  <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1.5 text-xs font-medium text-orange-700">
-                    <img
-                      src="/logo-minha-oficina.png"
-                      alt="Minha Oficina"
-                      className="h-5 w-5 object-contain"
-                    />
+                  <div className="rounded-full border border-orange-200 bg-white px-3 py-1.5 text-xs font-medium text-orange-700">
                     Minha Oficina
                   </div>
                 </div>
