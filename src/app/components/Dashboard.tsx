@@ -323,9 +323,9 @@ export function Dashboard({
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-sm">
                 <img
-                  src="/logo-minha-oficina.png"
+                  src="/logo-minha-oficina-simbolo.png"
                   alt="Minha Oficina"
-                  className="h-[150%] w-[150%] -translate-y-[18%] object-contain"
+                  className="h-full w-full object-contain p-1"
                 />
               </div>
               <div>
