@@ -6,58 +6,122 @@ import * as kv from "./kv_store.ts";
 
 const app = new Hono();
 
-type ItemKind = "stock" | "service";
-const SERVICE_MARKER = "[service]";
+type ServiceStatus = "pending" | "in_progress" | "completed";
 
-function normalizeKind(value: unknown): ItemKind {
-  return value === "service" ? "service" : "stock";
-}
+const STOCK_PREFIX = "stock";
+const SERVICE_PREFIX = "service";
+const CLIENT_PREFIX = "client";
 
 function normalizeText(value: unknown) {
   return String(value ?? "").trim();
 }
 
-function parsePrice(value: unknown) {
-  const parsedValue = Number(value);
-  return Number.isFinite(parsedValue) ? parsedValue : NaN;
+function normalizeEmail(value: unknown) {
+  return normalizeText(value).toLowerCase();
 }
 
-function parseStock(value: unknown) {
-  const parsedValue = Number(value);
-  return Number.isFinite(parsedValue) ? Math.trunc(parsedValue) : NaN;
+function normalizePlate(value: unknown) {
+  return normalizeText(value).toUpperCase();
 }
 
-function inferStoredKind(item: any): ItemKind {
-  if (item?.kind === "service") {
-    return "service";
-  }
-
-  const description =
-    typeof item?.description === "string" ? item.description.trimStart() : "";
-
-  if (description.startsWith(SERVICE_MARKER)) {
-    return "service";
-  }
-
-  return "stock";
+function parseNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : NaN;
 }
 
-function normalizeProductResponse(product: any) {
-  const kind = inferStoredKind(product);
-
-  return {
-    ...product,
-    kind,
-    clientId: kind === "service" ? normalizeText(product?.clientId) : "",
-    price: Number(product?.price || 0),
-    stock: kind === "service" ? 0 : Number(product?.stock || 0),
-  };
+function parseInteger(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.trunc(parsed) : NaN;
 }
 
-// Enable logger
+function normalizeServiceStatus(value: unknown): ServiceStatus {
+  if (value === "in_progress") return "in_progress";
+  if (value === "completed") return "completed";
+  return "pending";
+}
+
+function sortByUpdatedAt<T extends { updatedAt?: string; createdAt?: string }>(
+  items: T[],
+) {
+  return [...items].sort((a, b) => {
+    const left = a.updatedAt || a.createdAt || "";
+    const right = b.updatedAt || b.createdAt || "";
+    return right.localeCompare(left);
+  });
+}
+
+function stockKey(userId: string, stockId: string) {
+  return `user:${userId}:${STOCK_PREFIX}:${stockId}`;
+}
+
+function stockPrefix(userId: string) {
+  return `user:${userId}:${STOCK_PREFIX}:`;
+}
+
+function clientKey(userId: string, clientId: string) {
+  return `user:${userId}:${CLIENT_PREFIX}:${clientId}`;
+}
+
+function clientPrefix(userId: string) {
+  return `user:${userId}:${CLIENT_PREFIX}:`;
+}
+
+function serviceKey(userId: string, serviceId: string) {
+  return `user:${userId}:${SERVICE_PREFIX}:${serviceId}`;
+}
+
+function servicePrefix(userId: string) {
+  return `user:${userId}:${SERVICE_PREFIX}:`;
+}
+
+async function listStocks(userId: string) {
+  const stocks = await kv.getByPrefix(stockPrefix(userId));
+  return sortByUpdatedAt(stocks || []);
+}
+
+async function listClients(userId: string) {
+  const clients = await kv.getByPrefix(clientPrefix(userId));
+  return [...(clients || [])].sort((a: any, b: any) =>
+    normalizeText(a?.name).localeCompare(normalizeText(b?.name)),
+  );
+}
+
+async function listServices(userId: string) {
+  const services = await kv.getByPrefix(servicePrefix(userId));
+  return sortByUpdatedAt(services || []);
+}
+
+async function ensureUniquePartCode(
+  userId: string,
+  partCode: string,
+  currentStockId?: string,
+) {
+  const stocks = await listStocks(userId);
+  return !stocks.some(
+    (item: any) =>
+      normalizeText(item?.partCode).toLowerCase() === partCode.toLowerCase() &&
+      item?.id !== currentStockId,
+  );
+}
+
+async function ensureClientExists(userId: string, clientId: string) {
+  const client = await kv.get(clientKey(userId, clientId));
+  return client || null;
+}
+
+async function getNextOrderNumber(userId: string) {
+  const services = await listServices(userId);
+  const maxNumber = services.reduce((currentMax: number, service: any) => {
+    const match = String(service?.orderNumber || "").match(/(\d+)/);
+    const orderNumber = match ? Number(match[1]) : 0;
+    return Math.max(currentMax, Number.isFinite(orderNumber) ? orderNumber : 0);
+  }, 0);
+
+  return `OS-${String(maxNumber + 1).padStart(4, "0")}`;
+}
+
 app.use("*", logger(console.log));
 
-// Enable CORS for all routes and methods
 app.use(
   "/*",
   cors({
@@ -69,22 +133,24 @@ app.use(
   }),
 );
 
-// Supabase client for auth
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
-// Auth middleware
 async function requireAuth(c: any, next: any) {
   const accessToken = c.req.header("Authorization")?.split(" ")[1];
+
   if (!accessToken) {
     return c.json({ error: "Unauthorized: Missing access token" }, 401);
   }
 
-  const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser(accessToken);
+
   if (error || !user?.id) {
-    console.log("Authorization error:", error?.message || "No user found");
     return c.json({ error: "Unauthorized: Invalid or expired token" }, 401);
   }
 
@@ -93,26 +159,23 @@ async function requireAuth(c: any, next: any) {
   await next();
 }
 
-app.get("/make-server-8db4781d/health", (c) => {
-  return c.json({ status: "ok" });
-});
+app.get("/make-server-8db4781d/health", (c) => c.json({ status: "ok" }));
 
 app.post("/make-server-8db4781d/auth/signup", async (c) => {
   try {
     const { email, password, name } = await c.req.json();
-    const normalizedEmail = normalizeText(email).toLowerCase();
+    const normalizedEmail = normalizeEmail(email);
     const normalizedName = normalizeText(name);
 
-    if (!normalizedEmail || !password) {
-      return c.json({ error: "Email and password are required" }, 400);
+    if (!normalizedEmail || !password || !normalizedName) {
+      return c.json({ error: "Name, email and password are required" }, 400);
     }
 
     if (password.length < 6) {
-      return c.json({ error: "Password must be at least 6 characters long" }, 400);
-    }
-
-    if (!normalizedName) {
-      return c.json({ error: "Name is required" }, 400);
+      return c.json(
+        { error: "Password must be at least 6 characters long" },
+        400,
+      );
     }
 
     const { data, error } = await supabase.auth.admin.createUser({
@@ -123,7 +186,6 @@ app.post("/make-server-8db4781d/auth/signup", async (c) => {
     });
 
     if (error) {
-      console.log("Signup error:", error.message);
       return c.json({ error: error.message }, 400);
     }
 
@@ -141,210 +203,174 @@ app.post("/make-server-8db4781d/auth/signup", async (c) => {
   }
 });
 
-app.get("/make-server-8db4781d/products", requireAuth, async (c) => {
+app.get("/make-server-8db4781d/stock", requireAuth, async (c) => {
   try {
     const userId = c.get("userId");
-    const products = await kv.getByPrefix(`user:${userId}:product:`);
-    const normalizedProducts = (products || []).map((product: any) =>
-      normalizeProductResponse(product),
-    );
-    return c.json({ products: normalizedProducts });
+    return c.json({ items: await listStocks(userId) });
   } catch (error) {
-    console.log("Error fetching products:", error);
-    return c.json({ error: "Failed to fetch products" }, 500);
+    console.log("Error fetching stock:", error);
+    return c.json({ error: "Failed to fetch stock items" }, 500);
   }
 });
 
-app.get("/make-server-8db4781d/products/:id", requireAuth, async (c) => {
-  try {
-    const userId = c.get("userId");
-    const productId = c.req.param("id");
-    const product = await kv.get(`user:${userId}:product:${productId}`);
-
-    if (!product) {
-      return c.json({ error: "Product not found" }, 404);
-    }
-
-    return c.json({ product: normalizeProductResponse(product) });
-  } catch (error) {
-    console.log("Error fetching product:", error);
-    return c.json({ error: "Failed to fetch product" }, 500);
-  }
-});
-
-app.post("/make-server-8db4781d/products", requireAuth, async (c) => {
+app.post("/make-server-8db4781d/stock", requireAuth, async (c) => {
   try {
     const userId = c.get("userId");
     const body = await c.req.json();
-    const normalizedKind = normalizeKind(body.kind);
-    const normalizedName = normalizeText(body.name);
-    const normalizedDescription = normalizeText(body.description);
-    const normalizedCategory = normalizeText(body.category);
-    const normalizedImage = normalizeText(body.image);
-    const normalizedClientId =
-      normalizedKind === "service" ? normalizeText(body.clientId) : "";
-    const normalizedPrice = parsePrice(body.price);
-    const normalizedStock =
-      normalizedKind === "service" ? 0 : parseStock(body.stock);
 
-    if (!normalizedName || !normalizedCategory || Number.isNaN(normalizedPrice)) {
-      return c.json({ error: "Name, category, and price are required" }, 400);
+    const partCode = normalizeText(body.partCode);
+    const name = normalizeText(body.name);
+    const imageUrl = normalizeText(body.imageUrl);
+    const quantity = parseInteger(body.quantity);
+    const price = parseNumber(body.price);
+
+    if (!partCode || !name || Number.isNaN(quantity) || Number.isNaN(price)) {
+      return c.json(
+        { error: "Part code, name, quantity and price are required" },
+        400,
+      );
     }
 
-    if (normalizedPrice < 0) {
-      return c.json({ error: "Price must be zero or greater" }, 400);
+    if (quantity < 0 || price < 0) {
+      return c.json(
+        { error: "Quantity and price must be zero or greater" },
+        400,
+      );
     }
 
-    if (normalizedKind === "stock" && Number.isNaN(normalizedStock)) {
-      return c.json({ error: "Stock quantity is required for stock items" }, 400);
+    const isUnique = await ensureUniquePartCode(userId, partCode);
+    if (!isUnique) {
+      return c.json({ error: "This part code is already registered" }, 400);
     }
 
-    if (normalizedKind === "stock" && normalizedStock < 0) {
-      return c.json({ error: "Stock quantity must be zero or greater" }, 400);
-    }
-
-    if (normalizedKind === "service" && !normalizedClientId) {
-      return c.json({ error: "Client is required for services" }, 400);
-    }
-
-    if (normalizedKind === "service") {
-      const existingClient = await kv.get(`user:${userId}:client:${normalizedClientId}`);
-      if (!existingClient) {
-        return c.json({ error: "Client not found" }, 400);
-      }
-    }
-
-    const productId = crypto.randomUUID();
-    const product = {
-      id: productId,
-      kind: normalizedKind,
-      name: normalizedName,
-      description: normalizedDescription,
-      category: normalizedCategory,
-      clientId: normalizedClientId,
-      price: normalizedPrice,
-      stock: normalizedStock,
-      image: normalizedImage,
+    const stockId = crypto.randomUUID();
+    const stockItem = {
+      id: stockId,
+      partCode,
+      name,
+      quantity,
+      price,
+      imageUrl,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    await kv.set(`user:${userId}:product:${productId}`, product);
-    return c.json({ success: true, product });
+    await kv.set(stockKey(userId, stockId), stockItem);
+    return c.json({ success: true, item: stockItem });
   } catch (error) {
-    console.log("Error creating product:", error);
-    return c.json({ error: "Failed to create product" }, 500);
+    console.log("Error creating stock item:", error);
+    return c.json({ error: "Failed to create stock item" }, 500);
   }
 });
 
-app.put("/make-server-8db4781d/products/:id", requireAuth, async (c) => {
+app.put("/make-server-8db4781d/stock/:id", requireAuth, async (c) => {
   try {
     const userId = c.get("userId");
-    const productId = c.req.param("id");
+    const stockId = c.req.param("id");
     const body = await c.req.json();
+    const existingItem = await kv.get(stockKey(userId, stockId));
 
-    const existingProduct = await kv.get(`user:${userId}:product:${productId}`);
-    if (!existingProduct) {
-      return c.json({ error: "Product not found" }, 404);
+    if (!existingItem) {
+      return c.json({ error: "Stock item not found" }, 404);
     }
 
-    const normalizedKind = normalizeKind(body.kind ?? existingProduct.kind);
-    const normalizedName = normalizeText(body.name ?? existingProduct.name);
-    const normalizedDescription = normalizeText(
-      body.description ?? existingProduct.description,
-    );
-    const normalizedCategory = normalizeText(
-      body.category ?? existingProduct.category,
-    );
-    const normalizedImage = normalizeText(body.image ?? existingProduct.image);
-    const normalizedClientId =
-      normalizedKind === "service"
-        ? normalizeText(body.clientId ?? existingProduct.clientId)
-        : "";
-    const normalizedPrice =
-      body.price !== undefined ? parsePrice(body.price) : Number(existingProduct.price || 0);
-    const normalizedStock =
-      normalizedKind === "service"
-        ? 0
-        : body.stock !== undefined
-          ? parseStock(body.stock)
-          : Number(existingProduct.stock || 0);
+    const partCode = normalizeText(body.partCode ?? existingItem.partCode);
+    const name = normalizeText(body.name ?? existingItem.name);
+    const imageUrl = normalizeText(body.imageUrl ?? existingItem.imageUrl);
+    const quantity =
+      body.quantity !== undefined
+        ? parseInteger(body.quantity)
+        : Number(existingItem.quantity || 0);
+    const price =
+      body.price !== undefined
+        ? parseNumber(body.price)
+        : Number(existingItem.price || 0);
 
-    if (!normalizedName || !normalizedCategory || Number.isNaN(normalizedPrice)) {
-      return c.json({ error: "Name, category, and price are required" }, 400);
+    if (!partCode || !name || Number.isNaN(quantity) || Number.isNaN(price)) {
+      return c.json(
+        { error: "Part code, name, quantity and price are required" },
+        400,
+      );
     }
 
-    if (normalizedPrice < 0) {
-      return c.json({ error: "Price must be zero or greater" }, 400);
+    if (quantity < 0 || price < 0) {
+      return c.json(
+        { error: "Quantity and price must be zero or greater" },
+        400,
+      );
     }
 
-    if (normalizedKind === "stock" && Number.isNaN(normalizedStock)) {
-      return c.json({ error: "Stock quantity is required for stock items" }, 400);
+    const isUnique = await ensureUniquePartCode(userId, partCode, stockId);
+    if (!isUnique) {
+      return c.json({ error: "This part code is already registered" }, 400);
     }
 
-    if (normalizedKind === "stock" && normalizedStock < 0) {
-      return c.json({ error: "Stock quantity must be zero or greater" }, 400);
-    }
-
-    if (normalizedKind === "service" && !normalizedClientId) {
-      return c.json({ error: "Client is required for services" }, 400);
-    }
-
-    if (normalizedKind === "service") {
-      const existingClient = await kv.get(`user:${userId}:client:${normalizedClientId}`);
-      if (!existingClient) {
-        return c.json({ error: "Client not found" }, 400);
-      }
-    }
-
-    const updatedProduct = {
-      ...existingProduct,
-      id: productId,
-      kind: normalizedKind,
-      name: normalizedName,
-      description: normalizedDescription,
-      category: normalizedCategory,
-      clientId: normalizedClientId,
-      price: normalizedPrice,
-      stock: normalizedStock,
-      image: normalizedImage,
+    const updatedItem = {
+      ...existingItem,
+      id: stockId,
+      partCode,
+      name,
+      quantity,
+      price,
+      imageUrl,
       updatedAt: new Date().toISOString(),
     };
 
-    await kv.set(`user:${userId}:product:${productId}`, updatedProduct);
-    return c.json({ success: true, product: updatedProduct });
+    await kv.set(stockKey(userId, stockId), updatedItem);
+    return c.json({ success: true, item: updatedItem });
   } catch (error) {
-    console.log("Error updating product:", error);
-    return c.json({ error: "Failed to update product" }, 500);
+    console.log("Error updating stock item:", error);
+    return c.json({ error: "Failed to update stock item" }, 500);
   }
 });
 
-app.delete("/make-server-8db4781d/products/:id", requireAuth, async (c) => {
+app.delete("/make-server-8db4781d/stock/:id", requireAuth, async (c) => {
   try {
     const userId = c.get("userId");
-    const productId = c.req.param("id");
+    const stockId = c.req.param("id");
+    const existingItem = await kv.get(stockKey(userId, stockId));
 
-    const existingProduct = await kv.get(`user:${userId}:product:${productId}`);
-    if (!existingProduct) {
-      return c.json({ error: "Product not found" }, 404);
+    if (!existingItem) {
+      return c.json({ error: "Stock item not found" }, 404);
     }
 
-    await kv.del(`user:${userId}:product:${productId}`);
+    await kv.del(stockKey(userId, stockId));
     return c.json({ success: true });
   } catch (error) {
-    console.log("Error deleting product:", error);
-    return c.json({ error: "Failed to delete product" }, 500);
+    console.log("Error deleting stock item:", error);
+    return c.json({ error: "Failed to delete stock item" }, 500);
   }
 });
 
 app.get("/make-server-8db4781d/clients", requireAuth, async (c) => {
   try {
     const userId = c.get("userId");
-    const clients = await kv.getByPrefix(`user:${userId}:client:`);
-    return c.json({ clients: clients || [] });
+    return c.json({ clients: await listClients(userId) });
   } catch (error) {
     console.log("Error fetching clients:", error);
     return c.json({ error: "Failed to fetch clients" }, 500);
+  }
+});
+
+app.get("/make-server-8db4781d/clients/:id/history", requireAuth, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const clientId = c.req.param("id");
+    const client = await kv.get(clientKey(userId, clientId));
+
+    if (!client) {
+      return c.json({ error: "Client not found" }, 404);
+    }
+
+    const services = await listServices(userId);
+    const history = services.filter(
+      (service: any) => normalizeText(service?.clientId) === clientId,
+    );
+
+    return c.json({ history });
+  } catch (error) {
+    console.log("Error fetching client history:", error);
+    return c.json({ error: "Failed to fetch client history" }, 500);
   }
 });
 
@@ -354,11 +380,11 @@ app.post("/make-server-8db4781d/clients", requireAuth, async (c) => {
     const body = await c.req.json();
 
     const name = normalizeText(body.name);
-    const email = normalizeText(body.email).toLowerCase();
+    const email = normalizeEmail(body.email);
     const phone = normalizeText(body.phone);
     const document = normalizeText(body.document);
     const vehicle = normalizeText(body.vehicle);
-    const licensePlate = normalizeText(body.licensePlate).toUpperCase();
+    const licensePlate = normalizePlate(body.licensePlate);
     const notes = normalizeText(body.notes);
 
     if (!name) {
@@ -379,7 +405,7 @@ app.post("/make-server-8db4781d/clients", requireAuth, async (c) => {
       updatedAt: new Date().toISOString(),
     };
 
-    await kv.set(`user:${userId}:client:${clientId}`, client);
+    await kv.set(clientKey(userId, clientId), client);
     return c.json({ success: true, client });
   } catch (error) {
     console.log("Error creating client:", error);
@@ -392,8 +418,8 @@ app.put("/make-server-8db4781d/clients/:id", requireAuth, async (c) => {
     const userId = c.get("userId");
     const clientId = c.req.param("id");
     const body = await c.req.json();
+    const existingClient = await kv.get(clientKey(userId, clientId));
 
-    const existingClient = await kv.get(`user:${userId}:client:${clientId}`);
     if (!existingClient) {
       return c.json({ error: "Client not found" }, 404);
     }
@@ -402,13 +428,13 @@ app.put("/make-server-8db4781d/clients/:id", requireAuth, async (c) => {
       ...existingClient,
       id: clientId,
       name: normalizeText(body.name ?? existingClient.name),
-      email: normalizeText(body.email ?? existingClient.email).toLowerCase(),
+      email: normalizeEmail(body.email ?? existingClient.email),
       phone: normalizeText(body.phone ?? existingClient.phone),
       document: normalizeText(body.document ?? existingClient.document),
       vehicle: normalizeText(body.vehicle ?? existingClient.vehicle),
-      licensePlate: normalizeText(
+      licensePlate: normalizePlate(
         body.licensePlate ?? existingClient.licensePlate,
-      ).toUpperCase(),
+      ),
       notes: normalizeText(body.notes ?? existingClient.notes),
       updatedAt: new Date().toISOString(),
     };
@@ -417,7 +443,7 @@ app.put("/make-server-8db4781d/clients/:id", requireAuth, async (c) => {
       return c.json({ error: "Client name is required" }, 400);
     }
 
-    await kv.set(`user:${userId}:client:${clientId}`, updatedClient);
+    await kv.set(clientKey(userId, clientId), updatedClient);
     return c.json({ success: true, client: updatedClient });
   } catch (error) {
     console.log("Error updating client:", error);
@@ -429,27 +455,25 @@ app.delete("/make-server-8db4781d/clients/:id", requireAuth, async (c) => {
   try {
     const userId = c.get("userId");
     const clientId = c.req.param("id");
-    const existingClient = await kv.get(`user:${userId}:client:${clientId}`);
+    const existingClient = await kv.get(clientKey(userId, clientId));
 
     if (!existingClient) {
       return c.json({ error: "Client not found" }, 404);
     }
 
-    const products = await kv.getByPrefix(`user:${userId}:product:`);
-    const hasLinkedServices = (products || []).some(
-      (product: any) =>
-        inferStoredKind(product) === "service" &&
-        normalizeText(product?.clientId) === clientId,
+    const services = await listServices(userId);
+    const hasLinkedServices = services.some(
+      (service: any) => normalizeText(service?.clientId) === clientId,
     );
 
     if (hasLinkedServices) {
       return c.json(
-        { error: "Client is still linked to registered services" },
+        { error: "This client still has linked service orders" },
         400,
       );
     }
 
-    await kv.del(`user:${userId}:client:${clientId}`);
+    await kv.del(clientKey(userId, clientId));
     return c.json({ success: true });
   } catch (error) {
     console.log("Error deleting client:", error);
@@ -457,109 +481,156 @@ app.delete("/make-server-8db4781d/clients/:id", requireAuth, async (c) => {
   }
 });
 
-app.get("/make-server-8db4781d/categories", requireAuth, async (c) => {
+app.get("/make-server-8db4781d/services", requireAuth, async (c) => {
   try {
     const userId = c.get("userId");
-    const categories = await kv.getByPrefix(`user:${userId}:category:`);
-    return c.json({ categories: categories || [] });
+    return c.json({ services: await listServices(userId) });
   } catch (error) {
-    console.log("Error fetching categories:", error);
-    return c.json({ error: "Failed to fetch categories" }, 500);
+    console.log("Error fetching services:", error);
+    return c.json({ error: "Failed to fetch service orders" }, 500);
   }
 });
 
-app.post("/make-server-8db4781d/categories", requireAuth, async (c) => {
+app.post("/make-server-8db4781d/services", requireAuth, async (c) => {
   try {
     const userId = c.get("userId");
-    const { name, color } = await c.req.json();
-    const normalizedName = normalizeText(name);
+    const body = await c.req.json();
 
-    if (!normalizedName) {
-      return c.json({ error: "Category name is required" }, 400);
-    }
+    const clientId = normalizeText(body.clientId);
+    const title = normalizeText(body.title);
+    const details = normalizeText(body.details);
+    const status = normalizeServiceStatus(body.status);
 
-    const categoryId = crypto.randomUUID();
-    const category = {
-      id: categoryId,
-      name: normalizedName,
-      color: color || "#6366f1",
-      createdAt: new Date().toISOString(),
-    };
-
-    await kv.set(`user:${userId}:category:${categoryId}`, category);
-    return c.json({ success: true, category });
-  } catch (error) {
-    console.log("Error creating category:", error);
-    return c.json({ error: "Failed to create category" }, 500);
-  }
-});
-
-app.delete("/make-server-8db4781d/categories/:id", requireAuth, async (c) => {
-  try {
-    const userId = c.get("userId");
-    const categoryId = c.req.param("id");
-    const existingCategory = await kv.get(`user:${userId}:category:${categoryId}`);
-
-    if (!existingCategory) {
-      return c.json({ error: "Category not found" }, 404);
-    }
-
-    const products = await kv.getByPrefix(`user:${userId}:product:`);
-    const hasLinkedProducts = (products || []).some(
-      (product: any) => product?.category === categoryId,
-    );
-
-    if (hasLinkedProducts) {
+    if (!clientId || !title || !details) {
       return c.json(
-        { error: "Category is still linked to stock items or services" },
+        { error: "Client, title and service details are required" },
         400,
       );
     }
 
-    await kv.del(`user:${userId}:category:${categoryId}`);
+    const client = await ensureClientExists(userId, clientId);
+    if (!client) {
+      return c.json({ error: "Client not found" }, 400);
+    }
+
+    const serviceId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const service = {
+      id: serviceId,
+      orderNumber: await getNextOrderNumber(userId),
+      clientId,
+      title,
+      details,
+      status,
+      createdAt: now,
+      updatedAt: now,
+      completedAt: status === "completed" ? now : "",
+    };
+
+    await kv.set(serviceKey(userId, serviceId), service);
+    return c.json({ success: true, service });
+  } catch (error) {
+    console.log("Error creating service order:", error);
+    return c.json({ error: "Failed to create service order" }, 500);
+  }
+});
+
+app.put("/make-server-8db4781d/services/:id", requireAuth, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const serviceId = c.req.param("id");
+    const body = await c.req.json();
+    const existingService = await kv.get(serviceKey(userId, serviceId));
+
+    if (!existingService) {
+      return c.json({ error: "Service order not found" }, 404);
+    }
+
+    const clientId = normalizeText(body.clientId ?? existingService.clientId);
+    const title = normalizeText(body.title ?? existingService.title);
+    const details = normalizeText(body.details ?? existingService.details);
+    const status = normalizeServiceStatus(body.status ?? existingService.status);
+
+    if (!clientId || !title || !details) {
+      return c.json(
+        { error: "Client, title and service details are required" },
+        400,
+      );
+    }
+
+    const client = await ensureClientExists(userId, clientId);
+    if (!client) {
+      return c.json({ error: "Client not found" }, 400);
+    }
+
+    const updatedService = {
+      ...existingService,
+      id: serviceId,
+      clientId,
+      title,
+      details,
+      status,
+      updatedAt: new Date().toISOString(),
+      completedAt:
+        status === "completed"
+          ? existingService.completedAt || new Date().toISOString()
+          : "",
+    };
+
+    await kv.set(serviceKey(userId, serviceId), updatedService);
+    return c.json({ success: true, service: updatedService });
+  } catch (error) {
+    console.log("Error updating service order:", error);
+    return c.json({ error: "Failed to update service order" }, 500);
+  }
+});
+
+app.delete("/make-server-8db4781d/services/:id", requireAuth, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const serviceId = c.req.param("id");
+    const existingService = await kv.get(serviceKey(userId, serviceId));
+
+    if (!existingService) {
+      return c.json({ error: "Service order not found" }, 404);
+    }
+
+    await kv.del(serviceKey(userId, serviceId));
     return c.json({ success: true });
   } catch (error) {
-    console.log("Error deleting category:", error);
-    return c.json({ error: "Failed to delete category" }, 500);
+    console.log("Error deleting service order:", error);
+    return c.json({ error: "Failed to delete service order" }, 500);
   }
 });
 
 app.get("/make-server-8db4781d/stats", requireAuth, async (c) => {
   try {
     const userId = c.get("userId");
-    const rawProducts = await kv.getByPrefix(`user:${userId}:product:`);
-    const categories = await kv.getByPrefix(`user:${userId}:category:`);
-    const clients = await kv.getByPrefix(`user:${userId}:client:`);
-    const products = (rawProducts || []).map((product: any) =>
-      normalizeProductResponse(product),
-    );
+    const stockItems = await listStocks(userId);
+    const clients = await listClients(userId);
+    const services = await listServices(userId);
 
-    const stockItems = products.filter((product: any) => product.kind === "stock");
-    const services = products.filter((product: any) => product.kind === "service");
-
-    const totalProducts = products.length;
-    const totalStockItems = stockItems.length;
-    const totalServices = services.length;
-    const totalValue = stockItems.reduce(
-      (sum: number, product: any) => sum + product.price * product.stock,
-      0,
+    const activeServices = services.filter(
+      (service: any) => service.status !== "completed",
     );
-    const totalStock = stockItems.reduce(
-      (sum: number, product: any) => sum + product.stock,
+    const completedServices = services.filter(
+      (service: any) => service.status === "completed",
+    );
+    const stockValue = stockItems.reduce(
+      (sum: number, item: any) =>
+        sum + Number(item?.price || 0) * Number(item?.quantity || 0),
       0,
     );
     const lowStockCount = stockItems.filter(
-      (product: any) => product.stock < 10,
+      (item: any) => Number(item?.quantity || 0) <= 3,
     ).length;
 
     return c.json({
-      totalProducts,
-      totalStockItems,
-      totalServices,
-      totalCategories: categories?.length || 0,
-      totalClients: clients?.length || 0,
-      totalValue,
-      totalStock,
+      totalStockItems: stockItems.length,
+      totalClients: clients.length,
+      activeServices: activeServices.length,
+      completedServices: completedServices.length,
+      stockValue,
       lowStockCount,
     });
   } catch (error) {
