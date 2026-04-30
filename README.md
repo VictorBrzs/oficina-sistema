@@ -1,5 +1,5 @@
 
-  # Site com banco de dados
+  # Sistema para auxilio de oficina
 
   Projeto React + Vite integrado ao Supabase.
 
